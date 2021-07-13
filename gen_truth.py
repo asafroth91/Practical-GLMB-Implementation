@@ -49,12 +49,23 @@ class ground_truth(model):
         
         self.GLMBmodel = model()
         # Gen tracks
+        self.target_gt_states = np.empty(shape = 12,dtype=object)
+        self.track_list = np.ones(shape = (99,12),dtype=int)*-1
+        self.truth_card = np.zeros(shape = 99)
         for targetnum in range(n_births):
             target_state = self.start_locations[targetnum,:].reshape((4,1))
-            self.truthK = []
+            truthK = []
+            truthTrack = []
             for k in range(self.birth_time[targetnum],min(((self.death_time[targetnum][0]).astype(np.int64())),self.K)):
                 target_state = self.gen_newstate_fn(self.GLMBmodel, target_state, 'noiseless')
-                self.truthK.append(target_state)
+                truthK.append(target_state)
+                self.track_list[k-1,targetnum] = targetnum
+                self.truth_card[k-1] = self.truth_card[k-1] + 1
+    
+            ## figure out indexing   
+            arrayK = np.array(truthK).reshape((-1,4))
+            self.target_gt_states[targetnum] = arrayK
+            
         
     def gen_newstate_fn(self,GLMBmodel,target_state, noise):
         if (noise == 'noise'):

@@ -1,4 +1,5 @@
 import numpy as np
+from numpy import random
 from scipy.stats.distributions import chi2
 import glob
 import os 
@@ -8,6 +9,7 @@ import pickle
 from libs.filter import Filter
 from libs.est import Est
 from libs.glmb import GLMB
+from libs.model import Model
 from libs.glmb import TT
 from libs.model import Model
 
@@ -65,7 +67,7 @@ if __name__ == "__main__":
         for k in range(K):
             #joint prediction and update
             print(k)
-            
+            # GLMB copy is for thesis 
             glmb_update= jointpredictupdate(glmb_update,model,filter,meas,k)
             H_posterior= len(glmb_update.w)
             
@@ -76,7 +78,9 @@ if __name__ == "__main__":
             H_cap= len(glmb_update.w)
             
             # #state estimation 
-            est= extract_estimates_recursive(glmb_update,model,meas,est);
+            est= extract_estimates_recursive(glmb_update,model,meas,est)
+            
+
         #     if write_out==True:
         #         foldername='out'+str(k)
         #         if os.path.exists(foldername)==False:
@@ -101,7 +105,6 @@ if __name__ == "__main__":
                 Zd= denormalize(Z,meas_min,meas_max,meas_range)
                 Xct[[0 ,2],:] =Zd
                 est.X[ct]=Xct
-
         with open('est.pickle', 'wb') as f:
             pickle.dump(est, f)
         print('done')

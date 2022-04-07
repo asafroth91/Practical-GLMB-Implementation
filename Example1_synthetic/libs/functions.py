@@ -74,7 +74,8 @@ def unique_faster(keys):#ok
 def sum_sub2ind(X,rows,cols):
     s=0.0
     for ct in range(len(rows)):
-        s=s+X[rows[ct],cols[ct]]
+        ith_cost = X[rows[ct],cols[ct]]
+        s=s+ith_cost
     return s
 
 def unique_rows(a):
@@ -87,35 +88,37 @@ def unique_rows(a):
 
 
 
-def mbestwrap_updt_gibbsamp(P0,m): #ok
+def mbestwrap_updt_gibbsamp(P0,T): #ok
     # assignments=0
     # costs=0
+    # m = T from algorithm 2 
+    P = P0.shape[0] 
+    n2 = P0.shape[1] # 
 
-    n1 = P0.shape[0]
-    n2 = P0.shape[1]
-
-    if m<=1:
-        assignments= np.zeros((1,n1))
+    if T<=1:
+        assignments= np.zeros((1,P))
         costs= np.array([0.0])
     else:
-        assignments= np.zeros((int(m),n1))
-        costs= np.zeros((1,int(m))).squeeze()
+        assignments= np.zeros((int(T),P))
+        costs= np.zeros((1,int(T))).squeeze()
     
-    currsoln= np.arange(n1,2*n1); #use all missed detections as initial solution
+    currsoln= np.arange(P,2*P) #use all missed detections as initial solution
     assignments[0,:]= currsoln
-    rows=np.arange(0,n1)
+    rows=np.arange(0,P)
     cols=currsoln
     costs[0]=sum_sub2ind(P0,rows,cols)
     #debug_rand=[]
     #debug_rand=np.loadtxt('debug_rand.txt')
     ct_rand=0
-    for sol in range(1,int(m)):
-        for var in range(n1): 
-            tempsamp= np.exp(-P0[var,:]); #grab row of costs for current association variable
-            i1=np.arange(0,var)
-            i2=np.arange(var+1,len(currsoln))
-            i=np.concatenate((i1,i2))
-            tempsamp[currsoln[i]]= 0; #lock out current and previous iteration step assignments except for the one in question
+    # GIBBS ROUTINE
+    for sol in range(1,int(T)):
+        for n in range(P): 
+            ## currsoln -> gamma_n
+            tempsamp= np.exp(-P0[n,:]); #grab row of costs for current association variable
+            i1=np.arange(0,n)
+            i2=np.arange(n+1,len(currsoln))
+            i=np.concatenate((i1,i2)) # this index is used to set all corresponding currsoln to 0, except for "n"
+            tempsamp[currsoln[i]]= 0 # keeps n from currsoln (from tempsamp) and sets the other solutions in cursoln to 0 -> locks them out
             idxold= np.where(tempsamp>0)[0]
             tempsamp= tempsamp[idxold]
             bins=np.concatenate(([0],np.cumsum(tempsamp)/np.sum(tempsamp),[1+1e-6]))
@@ -127,14 +130,16 @@ def mbestwrap_updt_gibbsamp(P0,m): #ok
             
             hist=np.histogram(rand_num,bins)[0]
             ind=np.where(hist>0)[0]
+            # we randomly choose a value from gamma, excluding gamma_n (i.e excluding currsoln)
             
-            currsoln[var]= ind
-            currsoln[var]= idxold[currsoln[var]]
+            #currsoln[n]= 
+            currsoln[n]= idxold[ind]
         
         assignments[sol,:]= currsoln
-        rows=np.arange(0,n1)
+        rows=np.arange(0,P)
         cols=currsoln
-        costs[sol]=sum_sub2ind(P0,rows,cols)
+        costs[sol]=sum_sub2ind(P0,rows,cols) # convert subscirpt indicies (row,col) to linear index and sum, see under equation 24
+        ## this just sums the associated costs from the cost matrix
         
     
     C,I= unique_rows(assignments)
@@ -341,15 +346,15 @@ def clean_update(glmb_temp):
 
 def prune(glmb_in,filter):
     #prune components with weights lower than specified threshold
-    idxkeep= np.where(glmb_in.w > filter.hyp_threshold)[0]
+    hypoPersist= np.where(glmb_in.w > filter.hyp_threshold)[0]
     glmb_out=GLMB()
     glmb_out.set_tt(glmb_in.tt)
-    glmb_out.set_w(glmb_in.w[idxkeep])
+    glmb_out.set_w(glmb_in.w[hypoPersist])
     Iout=[]
-    for ct in range(len(idxkeep)):
-        Iout.append(glmb_in.I[idxkeep[ct]])
+    for ct in range(len(hypoPersist)):
+        Iout.append(glmb_in.I[hypoPersist[ct]])
     glmb_out.set_I(Iout)
-    glmb_out.set_n(glmb_in.n[idxkeep])
+    glmb_out.set_n(glmb_in.n[hypoPersist])
 
     glmb_out.w= glmb_out.w/np.sum(glmb_out.w)
     # for card in range(int(np.max(glmb_out.n))):
@@ -371,11 +376,11 @@ def cap(glmb_in,filter):
     if len(glmb_in.w) > filter.H_max:
         glmb_out=GLMB()
         idxsort= np.argsort(glmb_in.w)[::-1]
-        idxkeep=idxsort[1:filter.H_max]
+        hypoPersist=idxsort[1:filter.H_max]
         glmb_out.tt= glmb_in.tt
-        glmb_out.w= glmb_in.w[idxkeep]
-        glmb_out.I= glmb_in.I[idxkeep]
-        glmb_out.n= glmb_in.n[idxkeep]
+        glmb_out.w= glmb_in.w[hypoPersist]
+        glmb_out.I= glmb_in.I[hypoPersist]
+        glmb_out.n= glmb_in.n[hypoPersist]
         
         glmb_out.w= glmb_out.w/np.concatenatesum(glmb_out.w)
         for card in range(np.max(glmb_out.n)):
@@ -432,6 +437,7 @@ def extract_estimates_recursive(glmb,model,meas,est):
     J= np.zeros((2,M)).astype(int)
 
     idxcmp= np.argmax(glmb.w*(glmb.n==M))
+    #idxcmp -> idx of highest weighted
     for m in range(M):
         idxptr= int(glmb.I[idxcmp][m])
         T.append (glmb.tt[idxptr].ah)
@@ -552,6 +558,8 @@ def jointpredictupdate(glmb_update,model,filter,meas,k):
         
     
     #precalculation loop for average survival/death probabilities
+        #avps - average ps
+
     tmp=np.zeros((len(glmb_update.tt),1))
     avps= np.concatenate( (model.r_birth,tmp))
     for tabidx  in range(len(glmb_update.tt)):
@@ -561,53 +569,59 @@ def jointpredictupdate(glmb_update,model,filter,meas,k):
     #precalculation loop for average detection/missed probabilities
     avpd= np.zeros((len(glmb_predict.tt),1))
     for tabidx in range(len(glmb_predict.tt)):
-        avpd[tabidx]= model.P_D
+        avpd[tabidx]= model.P_D   
     avqd= 1-avpd; 
 
     #create updated tracks (single target Bayes update)
-    m= meas[k].shape[1]  
-    n_tt_update=(1+m)*len(glmb_predict.tt)                                 #number of measurements
+    m= meas[k].shape[1]                                                     # number of measurements for this time step (detections + clutter)
+    n_tt_update=(1+m)*len(glmb_predict.tt)                                 #number of different ways to associate measurments to tracks
     tt_update=[]# cell((1+m)*length(glmb_predict.tt),1);       #initialize cell array
     for ct_tt_update in range(n_tt_update):
         tt_update.append(TT())
     #missed detection tracks (legacy tracks)
     for tabidx in range(len(glmb_predict.tt)):# 1:length(glmb_predict.tt)
-        tt_update[tabidx]= copy.deepcopy(glmb_predict.tt[tabidx])       #same track table
+        tt_update[tabidx]= copy.deepcopy(glmb_predict.tt[tabidx])       #same track table - copying over exisitng track tabel
         tt_update[tabidx].ah.append(-1)    #track association history (updated for missed detection)
 
 
     #measurement updated tracks (all pairs)
-    allcostm= np.zeros((len(glmb_predict.tt),m))
+    # step 1 - producing signficant children - for each measurment inside a given tracks gate, update the track with the given measurment and create a new track with weight = 1
+    # What is the signifcance of where they are stored 
+    predLikelihood= np.zeros((len(glmb_predict.tt),m))
     for tabidx in range(len(glmb_predict.tt))  :
-        for emm in glmb_predict.tt[tabidx].gatemeas:
-                stoidx= len(glmb_predict.tt)*(emm[0]+1) + tabidx; #index of predicted track i updated with measurement j is (number_predicted_tracks*j + i)
+        for emm in glmb_predict.tt[tabidx].gatemeas: #gatemeas holds the valid measurements within the gate
+                stoidx= len(glmb_predict.tt)*(emm[0]+1) + tabidx #index of predicted track i updated with measurement j is (number_predicted_tracks*j + i)
                 qz_temp,m_temp,P_temp = kalman_update_multiple(meas[k][:,emm],model,glmb_predict.tt[tabidx].m,glmb_predict.tt[tabidx].P);   #kalman update for this track and this measurement
-                w_temp= qz_temp*glmb_predict.tt[tabidx].w+np.finfo(float).eps;                                                                                 #unnormalized updated weights
-                tt_update[stoidx].m= m_temp;                                                                                                    #means of Gaussians for updated track
-                tt_update[stoidx].P= P_temp;                                                                                                    #covs of Gaussians for updated track
-                tt_update[stoidx].w= w_temp/np.sum(w_temp);                                                                                        #weights of Gaussians for updated track
-                tt_update[stoidx].l =glmb_predict.tt[tabidx].get_l()# glmb_predict.tt[tabidx].l;                                                                                #track label
-                tt_update[stoidx].ah= glmb_predict.tt[tabidx].get_ah() + emm.tolist() #glmb_predict.tt[tabidx].ah + emm.tolist()                                                                      #track association history (updated with new measurement)
-                allcostm[tabidx,emm]= np.sum(w_temp);                                                                                              #predictive likelihood
+                # See equations 11,12,13
+                w_temp= qz_temp*glmb_predict.tt[tabidx].w+np.finfo(float).eps;                          #unnormalized updated weights
+                tt_update[stoidx].m= m_temp;                                                            #means of Gaussians for updated track
+                tt_update[stoidx].P= P_temp;                                                            #covs of Gaussians for updated track
+                tt_update[stoidx].w= w_temp/np.sum(w_temp)                                             #weights of Gaussians for updated track
+                tt_update[stoidx].l =glmb_predict.tt[tabidx].get_l()# glmb_predict.tt[tabidx].l;        #track label
+                tt_update[stoidx].ah= glmb_predict.tt[tabidx].get_ah() + emm.tolist() #glmb_predict.tt[tabidx].ah + emm.tolist()                    #track association history (updated with new measurement)
+                predLikelihood[tabidx,emm]= np.sum(w_temp)                                     #predictive likelihood
     glmb_nextupdate=GLMB()     
-    glmb_nextupdate.set_tt( tt_update) #glmb_nextupdate.tt= tt_update;                                                                                                          #copy track table back to GLMB struct
-    #joint cost matrix
-    joint1=np.diag(avqs.squeeze())
-    joint2=np.diag((avps*avqd).squeeze())
-    joint3=np.repeat(avps*avpd,m,1)*allcostm/(model.lambda_c*model.pdf_c)
+    glmb_nextupdate.set_tt( tt_update) #glmb_nextupdate.tt= tt_update; 
+                                                                                #copy track table back to GLMB struct
+    #joint cost matrix - see equation 22
+    joint1=np.diag(avqs.squeeze()) # died or not born 
+    joint2=np.diag((avps*avqd).squeeze()) # survived and misdetected
+    joint3=np.repeat(avps*avpd,m,1)*predLikelihood/(model.lambda_c*model.pdf_c) # survived and detected
 
     jointcostm=np.concatenate((joint1,joint2,joint3),1)
 
-    #gated measurement index matrix
+    #gated measurement index matrix - for each of the original tracks at time k, get the index from the meas[k] of the corresponding gated measurments per track
+    # size = (num_tracks_orig, meas[k].shape[1])
     gatemeasidxs=-np.ones((len(glmb_predict.tt),m))# np.zeros((len(glmb_predict.tt),m))
     for tabidx in range(len(glmb_predict.tt)):
         gatemeasidxs[tabidx,np.arange(len(glmb_predict.tt[tabidx].gatemeas))]=glmb_predict.tt[tabidx].gatemeas.reshape(1,-1)
     
+    # mask 
     gatemeasindc= gatemeasidxs>=0
             
     #component updates
 
-    runidx= 0
+    newHypIdx= 0
     for pidx in range(len(glmb_update.w)):
         #calculate best updated hypotheses/components
         cpreds= len(glmb_predict.tt)
@@ -620,46 +634,59 @@ def jointpredictupdate(glmb_update,model,filter,meas,k):
         # for i in range(len(glmb_update.I)):
         #     tindices =np.concatenate((tindices,nbirths+glmb_update.I[pidx].astype('int')) )
         #
-        if glmb_update.I[pidx].size>0:
-            tindices =np.concatenate((tindices.reshape(-1,1),nbirths+glmb_update.I[pidx].reshape(-1,1)) ).astype('int').squeeze()                                                               #indices of all births and existing tracks  for current component
+        if glmb_update.I[pidx].size>0: # remember, components in I[pidx] are indicies in track table
+            # (birth indicies)+(I[pidx] indicies offset by bith indicies)
+            # tindices here correspond to total indices of number of births + number of exisiting tracks for this hypothesis' componenets
+            tindices =np.concatenate((tindices.reshape(-1,1),nbirths+glmb_update.I[pidx].reshape(-1,1)) ).astype('int').squeeze()       #indices of all births and existing tracks  for current component
 
+        # size = (num_tracks_orig, meas[k].shape[1])
         lselmask= np.zeros((len(glmb_predict.tt),m))
+        # mask based on zeros and ones - same as gatemeasidxs excpet with 0s and 1s
         lselmask[tindices,:]= gatemeasindc[tindices,:]                                        #logical selection mask to index gating matrices
-        mindices= unique_faster(gatemeasidxs[lselmask>0])
+        mindices= unique_faster(gatemeasidxs[lselmask>0]) #just get unique indicies of measurements from meas[k] -> no measurment repeated twice 
         
-        indices_col=np.concatenate((np.array(tindices),np.array(tindices)+cpreds,np.array(mindices)+2*cpreds  ) ).astype('int')                                                                                  #union indices of gated measurements for corresponding tracks
+        indices_col=np.concatenate((np.array(tindices),np.array(tindices)+cpreds,np.array(mindices)+2*cpreds  ) ).astype('int')     #union indices of gated measurements for corresponding tracks
         costm= jointcostm[tindices,:]
-        costm= costm[:,indices_col]                                                           #cost matrix - [no_birth/is_death | born/survived+missed | born/survived+detected]
-        neglogcostm= -np.log(costm);                                                                                                           #negative log cost
+        costm= costm[:,indices_col] 
+        # COST MATRIX C                                                          #cost matrix - [no_birth/is_death | born/survived+missed | born/survived+detected]
+        neglogcostm= -np.log(costm)
+        # Recall tindices here correspond to total indices of number of births + number of exisiting tracks for this hypothesis' componenets                                                                                                          #negative log cost
+        # Recall indices_col -  union indices of gated measurements for corresponding tracks
+        # targets the rows, columns correspond to assocation of 1 of 3 categories
+
         
-        uasses,nlcost= mbestwrap_updt_gibbsamp(neglogcostm,np.round(filter.H_upd*np.sqrt(glmb_update.w[pidx])/np.sum(np.sqrt(glmb_update.w))));#murty's algo/gibbs sampling to calculate m-best assignment hypotheses/components
-        uasses[uasses<ntracks]= -np.inf                                                                                                      #set not born/track deaths to -inf assignment
-        uasses[(uasses>=ntracks) & (uasses< 2*ntracks)]= -1;                                                                                     #set survived+missed to 0 assignment
-        uasses[uasses>=2*ntracks]= uasses[uasses>=2*ntracks]-2*ntracks;                                                                       #set survived+detected to assignment of measurement index from 1:|Z|    
-        uasses[uasses>=0]= mindices[uasses[uasses>=0].astype('int')]                                                                                     #restore original indices of gated measurements
-        uasses=uasses+1
+        ## Gibbs Sampling ##
+        # number of requested / updated components - higher weighteted hypothesis get more components
+        num_upd_comp = np.round(filter.H_upd*np.sqrt(glmb_update.w[pidx])/np.sum(np.sqrt(glmb_update.w)))
+        gibbs_assignments,nlcost= mbestwrap_updt_gibbsamp(neglogcostm,num_upd_comp);#murty's algo/gibbs sampling to calculate m-best assignment hypotheses/components
+        gibbs_assignments[gibbs_assignments<ntracks]= -np.inf                                                         #set not born/track deaths to -inf assignment
+        gibbs_assignments[(gibbs_assignments>=ntracks) & (gibbs_assignments< 2*ntracks)]= -1                          #set survived+missed to 0 assignment
+        gibbs_assignments[gibbs_assignments>=2*ntracks]= gibbs_assignments[gibbs_assignments>=2*ntracks]-2*ntracks;   #set survived+detected to assignment of measurement index from 1:|Z|    
+        gibbs_assignments[gibbs_assignments>=0]= mindices[gibbs_assignments[gibbs_assignments>=0].astype('int')]      #restore original indices of gated measurements
+        gibbs_assignments=gibbs_assignments+1
         #generate corrresponding jointly predicted/updated hypotheses/components
         for hidx  in range(len(nlcost)):
-            update_hypcmp_tmp= uasses[hidx,:].reshape(-1,1)
+            update_hypcmp_tmp= gibbs_assignments[hidx,:].reshape(-1,1)
             tmp1= np.arange(nbirths).reshape(-1,1)
             tmp2=(glmb_update.I[pidx]+nbirths).reshape(-1,1)
-            tmp=np.concatenate( (tmp1,tmp2),0 )
-            update_hypcmp_idx= cpreds*update_hypcmp_tmp+ tmp
-            up_w=-model.lambda_c+m*np.log(model.lambda_c*model.pdf_c)+np.log(glmb_update.w[pidx])-nlcost[hidx]
-            up_I=update_hypcmp_idx[update_hypcmp_idx>=0] 
+            tmp=np.concatenate( (tmp1,tmp2),0 ) # indices of births and survived targets
+            update_hypcmp_idx= cpreds*update_hypcmp_tmp+ tmp #
+            up_w=-model.lambda_c+m*np.log(model.lambda_c*model.pdf_c)+np.log(glmb_update.w[pidx])-nlcost[hidx] # equation 53 in source 01
+            up_I=update_hypcmp_idx[update_hypcmp_idx>=0] # equation 29
             up_n= np.sum(update_hypcmp_idx>=0)
-            if len(glmb_nextupdate.w)>runidx:
-                glmb_nextupdate.w[runidx]= up_w                                          #hypothesis/component weight
-                glmb_nextupdate.I[runidx]= up_I                                                                                             #hypothesis/component tracks (via indices to track table)
-                glmb_nextupdate.n[runidx]= up_n
+
+            if len(glmb_nextupdate.w)>newHypIdx:
+                glmb_nextupdate.w[newHypIdx]= up_w                                          #hypothesis/component weight
+                glmb_nextupdate.I[newHypIdx]= up_I                                          #hypothesis/component tracks (via indices to track table)
+                glmb_nextupdate.n[newHypIdx]= up_n
             else:
                  glmb_nextupdate.w=np.concatenate((glmb_nextupdate.w.reshape(-1,1),np.array([up_w]).reshape(-1,1)  )).squeeze()   
                  glmb_nextupdate.I.append(up_I)
                  glmb_nextupdate.n=np.concatenate(( glmb_nextupdate.n.reshape(-1,1),np.array([up_n]).reshape(-1,1) )).squeeze()       
                                                                                                                #hypothesis/component cardinality
-            runidx= runidx+1
+            newHypIdx= newHypIdx+1
 
-    glmb_nextupdate.w= np.exp(glmb_nextupdate.w-logsumexp(glmb_nextupdate.w));                                                                                                                 #normalize weights
+    glmb_nextupdate.w= np.exp(glmb_nextupdate.w-logsumexp(glmb_nextupdate.w))      #normalize weights
    
     #extract cardinality distribution
     for card in range(np.max(glmb_nextupdate.n)+1):
@@ -670,9 +697,9 @@ def jointpredictupdate(glmb_update,model,filter,meas,k):
             glmb_nextupdate.cdn =  np.concatenate((glmb_nextupdate.cdn,[up_cdn])) #glmb_nextupdate.cdn.append(up_cdn)
                                                                                                                #extract probability of n targets
     
-
+    
     #remove duplicate entries and clean track table
-   # glmb_nextupdate=sort_glmb(glmb_nextupdate)
+    #glmb_nextupdate=sort_glmb(glmb_nextupdate)
     clp=clean_predict(glmb_nextupdate)
     glmb_nextupdate= clean_update(clp)
     glmb_nextupdate=sort_glmb(glmb_nextupdate)

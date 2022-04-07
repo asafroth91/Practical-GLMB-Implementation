@@ -7,10 +7,6 @@ class Filter():
         self.H_max= H_max                #cap on number of posterior components/hypotheses
         self.hyp_threshold= hyp_threshold        #pruning threshold for components/hypotheses
 
-        self.L_max= L_max                  #limit on number of Gaussians in each track - not implemented yet
-        self.elim_threshold= elim_threshold        #pruning threshold for Gaussians in each track - not implemented yet
-        self.merge_threshold= merge_threshold         #merging threshold for Gaussians in each track - not implemented yet
-
         self.P_G=P_G                          #gate size in percentage
         self.gamma=chi2.ppf(self.P_G, df=model.z_dim)#chi2inv(self.P_G,model.z_dim);   #inv chi^2 dn gamma value
         self.gate_flag= gate_flag                            #gating on or off 1/0

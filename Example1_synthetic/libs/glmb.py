@@ -9,7 +9,7 @@ class GLMB():
         self.w= np.array([1])              #vector of GLMB component/hypothesis weights
         self.I= [np.array([])]            #cell of GLMB component/hypothesis labels (labels are indices/entries in track table)
         self.n= np.array([0])              #vector of GLMB component/hypothesis cardinalities
-        self.cdn= np.array([1.0])   
+        self.cdn= np.array([1.0])   #
         self.hash=[]
 
     #### get
@@ -50,7 +50,7 @@ class TT():
         self.P=np.array(P)
         self.w=np.array(w)
         self.l=np.array(l)
-        self.ah=ah
+        self.ah=ah # Var xi -> association history map
         self.gatemeas=-1
 
     #### get

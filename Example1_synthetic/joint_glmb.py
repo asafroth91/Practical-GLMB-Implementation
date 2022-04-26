@@ -6,14 +6,14 @@ import os
 import pandas as pd
 import copy
 import pickle
-from libs.filter import Filter
-from libs.est import Est
-from libs.glmb import GLMB
-from libs.model import Model
-from libs.glmb import TT
-from libs.model import Model
+from Glmb.filter import Filter
+from Glmb.est import Est
+from Glmb.glmb import GLMB
+from Glmb.model import Model
+from Glmb.glmb import TT
+from Glmb.model import Model
 
-from libs.functions import *
+from Glmb.functions import *
 import argparse
 import json
 if __name__ == "__main__":  

@@ -1,0 +1,13 @@
+Metadata-Version: 2.1
+Name: Glmb
+Version: 0.1.0
+Summary: Ads scraping and analysis tools
+Home-page: https://github.com/asafroth91/Practical-GLMB-Implementation
+Author: Random Name
+Author-email: randomemail@gmail.com
+License: UNKNOWN
+Description: UNKNOWN
+Platform: UNKNOWN
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Provides-Extra: tests

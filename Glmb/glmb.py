@@ -36,7 +36,7 @@ class GLMB():
     def set_cdn(self,cdn):
         self.cdn= copy.deepcopy(cdn)
 
-class TT():
+class labeledTarget():
     def __init__(self,m=[],P=[],w=[],l=[],ah=[]):
         # m means of Gaussians for  track
         #covs of Gaussians for  track

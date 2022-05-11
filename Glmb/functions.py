@@ -7,8 +7,7 @@ import copy
 import pickle
 from Glmb.filter import Filter
 from Glmb.est import Est
-from Glmb.glmb import GLMB
-from Glmb.glmb import TT
+from Glmb.glmb import GLMB, labeledTarget
 from Glmb.model import Model
 #debug_rand=np.loadtxt('debug_rand.txt')
 
@@ -531,7 +530,7 @@ def jointpredictupdate(glmb_update,model,filter,meas,k):
     tt_birth= []#cell(length(model.r_birth),1); 
     for tabidx in range( len(model.r_birth)):
     
-        tt_birth_new=TT(m=model.m_birth[tabidx],P=model.P_birth[tabidx],w= model.w_birth[tabidx],l=np.array([k,tabidx]).reshape(-1,1) , ah= [])
+        tt_birth_new=labeledTarget(m=model.m_birth[tabidx],P=model.P_birth[tabidx],w= model.w_birth[tabidx],l=np.array([k,tabidx]).reshape(-1,1) , ah= [])
         tt_birth.append(tt_birth_new)     
 
     #create surviving tracks - via time prediction (single target CK)
@@ -539,7 +538,7 @@ def jointpredictupdate(glmb_update,model,filter,meas,k):
                                                                                    #initialize cell array
     for tabsidx in range (len(glmb_update.tt)):
         [mtemp_predict,Ptemp_predict]= kalman_predict_multiple(model,glmb_update.tt[tabsidx].m,glmb_update.tt[tabsidx].P)     #kalman prediction for GM
-        tt_survive_new=TT(mtemp_predict, Ptemp_predict,glmb_update.tt[tabsidx].w,glmb_update.tt[tabsidx].l,glmb_update.tt[tabsidx].ah )
+        tt_survive_new=labeledTarget(mtemp_predict, Ptemp_predict,glmb_update.tt[tabsidx].w,glmb_update.tt[tabsidx].l,glmb_update.tt[tabsidx].ah )
         tt_survive.append(tt_survive_new)
     #create predicted tracks - concatenation of birth and survival
     glmb_predict=GLMB()
@@ -577,7 +576,7 @@ def jointpredictupdate(glmb_update,model,filter,meas,k):
     n_tt_update=(1+m)*len(glmb_predict.tt)                                 #number of different ways to associate measurments to tracks
     tt_update=[]# cell((1+m)*length(glmb_predict.tt),1);       #initialize cell array
     for ct_tt_update in range(n_tt_update):
-        tt_update.append(TT())
+        tt_update.append(labeledTarget())
     #missed detection tracks (legacy tracks)
     for tabidx in range(len(glmb_predict.tt)):# 1:length(glmb_predict.tt)
         tt_update[tabidx]= copy.deepcopy(glmb_predict.tt[tabidx])       #same track table - copying over exisitng track tabel

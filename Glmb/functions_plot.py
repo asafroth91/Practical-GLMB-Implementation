@@ -9,8 +9,7 @@ import copy
 import pickle
 from Glmb.filter import Filter
 from Glmb.est import Est
-from Glmb.glmb import GLMB
-from Glmb.glmb import TT
+from Glmb.glmb import GLMB, labeledTarget
 from Glmb.model import Model
 import matplotlib.pyplot as plt
 #debug_rand=np.loadtxt('debug_rand.txt')
@@ -429,7 +428,7 @@ def error_ellipse(P,mu):
     # This angle is between -pi and pi.
     # Let's shift it such that the angle is between 0 and 2pi
     if (angle < 0):
-        angle = angle + 2*np.pi;
+        angle = angle + 2*np.pi
     avg = mu
     
     # Get the 95% confidence interval error ellipse

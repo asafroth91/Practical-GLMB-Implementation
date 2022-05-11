@@ -405,59 +405,6 @@ def plot_results(model,truth_X,truth_track_list,truth_total_tracks,meas,est):
     plt.tight_layout()
     plt.show()
 
-    # ### COMPARE MHT AND GLMB ####
-    plt.figure(figsize=(18, 6))
-    with open('MHT_est_tracks.pickle', 'rb') as f:
-        Y_MHT_tracks=pickle.load(f)
-    for i in range(truth_total_tracks):
-        k_birth_death=np.arange(k_birth[i],k_death[i]).astype('int')
-        Pt= X_track[:,k_birth_death,i] 
-        Pt=Pt[[0, 2],:]
-        line,=plt.plot(Pt[0,:],Pt[1,:],'k')
-        plt.plot( Pt[0,0], Pt[1,0], 'ko')
-        plt.suptitle(r'$\delta-GLMB\:vs.\:MHT\:Estimates\:vs.\:Ground\:Truth$')
-        plt.xlabel('X')
-        plt.ylabel('Y')
-    line,=plt.plot(Pt[0,:],Pt[1,:],'k',label=r'$Ground\:truth$')
-    for t in range(Y_track.shape[2]):
-        y_line=Y_track[2,:,t]
-        x_line=Y_track[0,:,t]
-        plt.plot(x_line, y_line,'or',mfc='none')
-    glmb,=plt.plot(x_line, y_line,'or',mfc='none',label=r'$\delta-GLMB$')
-    for t in range(Y_MHT_tracks.shape[2]):
-        y_lineMHT=Y_MHT_tracks[2,:,t]
-        x_lineMHT=Y_MHT_tracks[0,:,t]
-        plt.plot(x_lineMHT, y_lineMHT,'.g')
-    mht,=plt.plot(x_lineMHT, y_lineMHT,'.g',label=r'$MHT$')
-    handles=[line,glmb,mht]
-    plt.xlim([-1000, 1000])   
-    plt.ylim([-1000, 1000]) 
-    plt.legend(handles=handles)
-    plt.show()
-
-    # PLOT cardinalites of MHT and GLMB 
-    data_plot_mht_fig3 = pickle.load( open( "data_plot_mht_fig3.pickle", "rb" ) )
-    data_plot_glmb_fig3 = pickle.load( open( "data_plot_glmb_fig3.pickle", "rb" ) )
-    plt.figure(figsize=(12,4))
-    truth_N=[]
-    for i in range(len(truth_track_list)):
-        truth_N.append(len(truth_track_list[i]))
-    
-    est_N=[]
-    for i in range(len(est.track_list)):
-        est_N.append(len(est.track_list[i]))
-
-    x_step=np.arange(len(meas))
-    plt.step(x_step,truth_N,'-k',label='Ground Truth')
-    plt.step(x_step,est_N,'.r',label='Estimated')
-    plt.step(data_plot_glmb_fig3['x_step'],data_plot_mht_fig3['est_N'],'og',label='MHT',mfc='none')
-    plt.title('Cardinality')
-    plt.xlabel('Time')
-    plt.ylabel('Cardinality')
-    plt.xticks(np.arange(0,105,5))
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
 
 
 def error_ellipse(P,mu):
@@ -482,7 +429,7 @@ def error_ellipse(P,mu):
     # This angle is between -pi and pi.
     # Let's shift it such that the angle is between 0 and 2pi
     if (angle < 0):
-        angle = angle + 2*np.pi;
+        angle = angle + 2*np.pi
     avg = mu
     
     # Get the 95% confidence interval error ellipse

@@ -10,7 +10,6 @@ from Glmb.filter import Filter
 from Glmb.est import Est
 from Glmb.glmb import GLMB
 from Glmb.model import Model
-from Glmb.glmb import TT
 from Glmb.model import Model
 
 from Glmb.functions import *

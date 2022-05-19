@@ -1,4 +1,4 @@
-# Joint GM δ-GLMB
+# Joint δ-GLMB
 
 This is a Gaussian Mixture implementation of the joint δ-GLMB filter based on the paper"An Efficient Implementation of the Generalized
 Labeled Multi-Bernoulli Filter".

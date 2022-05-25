@@ -5,7 +5,7 @@ class GLMB():
     def __init__(self):
 
         #initial prior
-        self.tt= []      #track table for GLMB (cell array of structs for individual tracks)
+        self.trackTable= []      #track table for GLMB (cell array of structs for individual tracks)
         self.w= np.array([1])              #vector of GLMB component/hypothesis weights
         self.I= [np.array([])]            #cell of GLMB component/hypothesis labels (labels are indices/entries in track table)
         self.n= np.array([0])              #vector of GLMB component/hypothesis cardinalities
@@ -14,7 +14,7 @@ class GLMB():
 
     #### get
     def get_tt(self):
-        return copy.deepcopy(self.tt)
+        return copy.deepcopy(self.trackTable)
     def get_I(self):
         return copy.deepcopy(self.I)
     def get_w(self):
@@ -26,7 +26,7 @@ class GLMB():
 
     ####set
     def set_tt(self,tt):
-        self.tt= copy.deepcopy(tt)
+        self.trackTable= copy.deepcopy(tt)
     def set_I(self,I):
         self.I= copy.deepcopy(I)
     def set_w(self,w):

@@ -292,7 +292,7 @@ def clean_predict(glmb_raw):
 
 
 
-    glmb_temp.tt= glmb_raw.tt.copy()
+    glmb_temp.trackTable= glmb_raw.trackTable.copy()
     glmb_temp.w= np.zeros((len(ic),1))
     glmb_temp.I= []#cell(length(cu),1);
     for ct in range(len(ic)):
@@ -312,7 +312,7 @@ def clean_predict(glmb_raw):
 def clean_update(glmb_temp):
     glmb_clean=GLMB()
     #flag used tracks
-    usedindicator=np.zeros((len(glmb_temp.tt),1))# np.zeros((len(glmb_temp.tt),1))
+    usedindicator=np.zeros((len(glmb_temp.trackTable),1))# np.zeros((len(glmb_temp.trackTable),1))
     for hidx in range(len(glmb_temp.w)):
         usedindicator[glmb_temp.I[hidx]]= usedindicator[glmb_temp.I[hidx]]+1
     
@@ -321,13 +321,13 @@ def clean_update(glmb_temp):
     #trackcount= np.sum(usedindicator>0)
     trackcount=len(id_trackcount)
     #remove unused tracks and reindex existing hypotheses/components
-    newindices= np.zeros((len(glmb_temp.tt),1))
+    newindices= np.zeros((len(glmb_temp.trackTable),1))
 
     #newindices[usedindicator>0]= np.arange(0,trackcount)
     for ct in range(trackcount):
             newindices[id_trackcount[ct]]=ct
-            glmb_clean.tt.append(glmb_temp.tt[id_trackcount[ct]])
-    #glmb_clean.tt= glmb_temp.tt[usedindicator>=0]
+            glmb_clean.trackTable.append(glmb_temp.trackTable[id_trackcount[ct]])
+    #glmb_clean.trackTable= glmb_temp.trackTable[usedindicator>=0]
     glmb_clean.w= glmb_temp.w
     for hidx in range(len(glmb_temp.w)):
         if hidx==0:
@@ -347,7 +347,7 @@ def prune(glmb_in,filter):
     #prune components with weights lower than specified threshold
     hypoPersist= np.where(glmb_in.w > filter.hyp_threshold)[0]
     glmb_out=GLMB()
-    glmb_out.set_tt(glmb_in.tt)
+    glmb_out.set_tt(glmb_in.trackTable)
     glmb_out.set_w(glmb_in.w[hypoPersist])
     Iout=[]
     for ct in range(len(hypoPersist)):
@@ -376,7 +376,7 @@ def cap(glmb_in,filter):
         glmb_out=GLMB()
         idxsort= np.argsort(glmb_in.w)[::-1]
         hypoPersist=idxsort[1:filter.H_max]
-        glmb_out.tt= glmb_in.tt
+        glmb_out.trackTable= glmb_in.trackTable
         glmb_out.w= glmb_in.w[hypoPersist]
         glmb_out.I= glmb_in.I[hypoPersist]
         glmb_out.n= glmb_in.n[hypoPersist]
@@ -439,8 +439,8 @@ def extract_estimates_recursive(glmb,model,meas,est):
     #idxcmp -> idx of highest weighted
     for m in range(M):
         idxptr= int(glmb.I[idxcmp][m])
-        T.append (glmb.tt[idxptr].ah)
-        J[:,m]= glmb.tt[idxptr].l.squeeze()
+        T.append (glmb.trackTable[idxptr].ah)
+        J[:,m]= glmb.trackTable[idxptr].l.squeeze()
     
 
     H= []#cell(M,1);
@@ -534,73 +534,73 @@ def jointpredictupdate(glmb_update,model,filter,meas,k):
         tt_birth.append(tt_birth_new)     
 
     #create surviving tracks - via time prediction (single target CK)
-    tt_survive=[]# cell(length(glmb_update.tt),1);  
+    tt_survive=[]# cell(length(glmb_update.trackTable),1);  
                                                                                    #initialize cell array
-    for tabsidx in range (len(glmb_update.tt)):
-        [mtemp_predict,Ptemp_predict]= kalman_predict_multiple(model,glmb_update.tt[tabsidx].m,glmb_update.tt[tabsidx].P)     #kalman prediction for GM
-        tt_survive_new=labeledTarget(mtemp_predict, Ptemp_predict,glmb_update.tt[tabsidx].w,glmb_update.tt[tabsidx].l,glmb_update.tt[tabsidx].ah )
+    for tabsidx in range (len(glmb_update.trackTable)):
+        [mtemp_predict,Ptemp_predict]= kalman_predict_multiple(model,glmb_update.trackTable[tabsidx].m,glmb_update.trackTable[tabsidx].P)     #kalman prediction for GM
+        tt_survive_new=labeledTarget(mtemp_predict, Ptemp_predict,glmb_update.trackTable[tabsidx].w,glmb_update.trackTable[tabsidx].l,glmb_update.trackTable[tabsidx].ah )
         tt_survive.append(tt_survive_new)
     #create predicted tracks - concatenation of birth and survival
     glmb_predict=GLMB()
-   # glmb_predict.tt= tt_birth+tt_survive                                                                                #copy track table back to GLMB struct
+   # glmb_predict.trackTable= tt_birth+tt_survive                                                                                #copy track table back to GLMB struct
     glmb_predict.set_tt(tt_birth+tt_survive)
     #gating by tracks
     if filter.gate_flag:
-        for tabidx  in range( len(glmb_predict.tt)):
-            glmb_predict.tt[tabidx].gatemeas= gate_meas_gms_idx(meas[k],filter.gamma,model,glmb_predict.tt[tabidx].m,glmb_predict.tt[tabidx].P)
+        for tabidx  in range( len(glmb_predict.trackTable)):
+            glmb_predict.trackTable[tabidx].gatemeas= gate_meas_gms_idx(meas[k],filter.gamma,model,glmb_predict.trackTable[tabidx].m,glmb_predict.trackTable[tabidx].P)
         
     else:
-        for tabidx  in range(len(glmb_predict.tt)):
+        for tabidx  in range(len(glmb_predict.trackTable)):
             start=1
             finish=meas[k].shape[1]
-            glmb_predict.tt[tabidx].gatemeas= np.linspace( start,finish,finish-start+1)
+            glmb_predict.trackTable[tabidx].gatemeas= np.linspace( start,finish,finish-start+1)
         
     
     #precalculation loop for average survival/death probabilities
         #avps - average ps
 
-    tmp=np.zeros((len(glmb_update.tt),1))
+    tmp=np.zeros((len(glmb_update.trackTable),1))
     avps= np.concatenate( (model.r_birth,tmp))
-    for tabidx  in range(len(glmb_update.tt)):
+    for tabidx  in range(len(glmb_update.trackTable)):
         avps[model.T_birth+tabidx]= model.P_S
     avqs= 1-avps
 
     #precalculation loop for average detection/missed probabilities
-    avpd= np.zeros((len(glmb_predict.tt),1))
-    for tabidx in range(len(glmb_predict.tt)):
+    avpd= np.zeros((len(glmb_predict.trackTable),1))
+    for tabidx in range(len(glmb_predict.trackTable)):
         avpd[tabidx]= model.P_D   
     avqd= 1-avpd; 
 
     #create updated tracks (single target Bayes update)
     m= meas[k].shape[1]                                                     # number of measurements for this time step (detections + clutter)
-    n_tt_update=(1+m)*len(glmb_predict.tt)                                 #number of different ways to associate measurments to tracks
-    tt_update=[]# cell((1+m)*length(glmb_predict.tt),1);       #initialize cell array
+    n_tt_update=(1+m)*len(glmb_predict.trackTable)                                 #number of different ways to associate measurments to tracks
+    tt_update=[]# cell((1+m)*length(glmb_predict.trackTable),1);       #initialize cell array
     for ct_tt_update in range(n_tt_update):
         tt_update.append(labeledTarget())
     #missed detection tracks (legacy tracks)
-    for tabidx in range(len(glmb_predict.tt)):# 1:length(glmb_predict.tt)
-        tt_update[tabidx]= copy.deepcopy(glmb_predict.tt[tabidx])       #same track table - copying over exisitng track tabel
+    for tabidx in range(len(glmb_predict.trackTable)):# 1:length(glmb_predict.trackTable)
+        tt_update[tabidx]= copy.deepcopy(glmb_predict.trackTable[tabidx])       #same track table - copying over exisitng track tabel
         tt_update[tabidx].ah.append(-1)    #track association history (updated for missed detection)
 
 
     #measurement updated tracks (all pairs)
     # step 1 - producing signficant children - for each measurment inside a given tracks gate, update the track with the given measurment and create a new track with weight = 1
     # What is the signifcance of where they are stored 
-    predLikelihood= np.zeros((len(glmb_predict.tt),m))
-    for tabidx in range(len(glmb_predict.tt))  :
-        for emm in glmb_predict.tt[tabidx].gatemeas: #gatemeas holds the valid measurements within the gate
-                stoidx= len(glmb_predict.tt)*(emm[0]+1) + tabidx #index of predicted track i updated with measurement j is (number_predicted_tracks*j + i)
-                qz_temp,m_temp,P_temp = kalman_update_multiple(meas[k][:,emm],model,glmb_predict.tt[tabidx].m,glmb_predict.tt[tabidx].P);   #kalman update for this track and this measurement
+    predLikelihood= np.zeros((len(glmb_predict.trackTable),m))
+    for tabidx in range(len(glmb_predict.trackTable))  :
+        for emm in glmb_predict.trackTable[tabidx].gatemeas: #gatemeas holds the valid measurements within the gate
+                stoidx= len(glmb_predict.trackTable)*(emm[0]+1) + tabidx #index of predicted track i updated with measurement j is (number_predicted_tracks*j + i)
+                qz_temp,m_temp,P_temp = kalman_update_multiple(meas[k][:,emm],model,glmb_predict.trackTable[tabidx].m,glmb_predict.trackTable[tabidx].P);   #kalman update for this track and this measurement
                 # See equations 11,12,13
-                w_temp= qz_temp*glmb_predict.tt[tabidx].w+np.finfo(float).eps;                          #unnormalized updated weights
+                w_temp= qz_temp*glmb_predict.trackTable[tabidx].w+np.finfo(float).eps;                          #unnormalized updated weights
                 tt_update[stoidx].m= m_temp;                                                            #means of Gaussians for updated track
                 tt_update[stoidx].P= P_temp;                                                            #covs of Gaussians for updated track
                 tt_update[stoidx].w= w_temp/np.sum(w_temp)                                             #weights of Gaussians for updated track
-                tt_update[stoidx].l =glmb_predict.tt[tabidx].get_l()# glmb_predict.tt[tabidx].l;        #track label
-                tt_update[stoidx].ah= glmb_predict.tt[tabidx].get_ah() + emm.tolist() #glmb_predict.tt[tabidx].ah + emm.tolist()                    #track association history (updated with new measurement)
+                tt_update[stoidx].l =glmb_predict.trackTable[tabidx].get_l()# glmb_predict.trackTable[tabidx].l;        #track label
+                tt_update[stoidx].ah= glmb_predict.trackTable[tabidx].get_ah() + emm.tolist() #glmb_predict.trackTable[tabidx].ah + emm.tolist()                    #track association history (updated with new measurement)
                 predLikelihood[tabidx,emm]= np.sum(w_temp)                                     #predictive likelihood
     glmb_nextupdate=GLMB()     
-    glmb_nextupdate.set_tt( tt_update) #glmb_nextupdate.tt= tt_update; 
+    glmb_nextupdate.set_tt( tt_update) #glmb_nextupdate.trackTable= tt_update; 
                                                                                 #copy track table back to GLMB struct
     #joint cost matrix - see equation 22
     joint1=np.diag(avqs.squeeze()) # died or not born 
@@ -611,9 +611,9 @@ def jointpredictupdate(glmb_update,model,filter,meas,k):
 
     #gated measurement index matrix - for each of the original tracks at time k, get the index from the meas[k] of the corresponding gated measurments per track
     # size = (num_tracks_orig, meas[k].shape[1])
-    gatemeasidxs=-np.ones((len(glmb_predict.tt),m))# np.zeros((len(glmb_predict.tt),m))
-    for tabidx in range(len(glmb_predict.tt)):
-        gatemeasidxs[tabidx,np.arange(len(glmb_predict.tt[tabidx].gatemeas))]=glmb_predict.tt[tabidx].gatemeas.reshape(1,-1)
+    gatemeasidxs=-np.ones((len(glmb_predict.trackTable),m))# np.zeros((len(glmb_predict.trackTable),m))
+    for tabidx in range(len(glmb_predict.trackTable)):
+        gatemeasidxs[tabidx,np.arange(len(glmb_predict.trackTable[tabidx].gatemeas))]=glmb_predict.trackTable[tabidx].gatemeas.reshape(1,-1)
     
     # mask 
     gatemeasindc= gatemeasidxs>=0
@@ -623,7 +623,7 @@ def jointpredictupdate(glmb_update,model,filter,meas,k):
     newHypIdx= 0
     for pidx in range(len(glmb_update.w)):
         #calculate best updated hypotheses/components
-        cpreds= len(glmb_predict.tt)
+        cpreds= len(glmb_predict.trackTable)
         nbirths= model.T_birth
         nexists= len(glmb_update.I[pidx])
         ntracks= nbirths + nexists
@@ -639,7 +639,7 @@ def jointpredictupdate(glmb_update,model,filter,meas,k):
             tindices =np.concatenate((tindices.reshape(-1,1),nbirths+glmb_update.I[pidx].reshape(-1,1)) ).astype('int').squeeze()       #indices of all births and existing tracks  for current component
 
         # size = (num_tracks_orig, meas[k].shape[1])
-        lselmask= np.zeros((len(glmb_predict.tt),m))
+        lselmask= np.zeros((len(glmb_predict.trackTable),m))
         # mask based on zeros and ones - same as gatemeasidxs excpet with 0s and 1s
         lselmask[tindices,:]= gatemeasindc[tindices,:]                                        #logical selection mask to index gating matrices
         mindices= unique_faster(gatemeasidxs[lselmask>0]) #just get unique indicies of measurements from meas[k] -> no measurment repeated twice 
